@@ -4,6 +4,7 @@ import com.bharat.SpendLens.entity.AuthUser;
 import com.bharat.SpendLens.repository.AuthUserRepo;
 import com.bharat.SpendLens.requestdto.SendOtpRequestDTO;
 import com.bharat.SpendLens.requestdto.VerifyOtpRequestDTO;
+import com.bharat.SpendLens.responsedto.TokenResponse;
 import com.bharat.SpendLens.responsedto.VerifyOtpResponseDTO;
 import com.twilio.Twilio;
 import com.twilio.rest.verify.v2.service.Verification;
@@ -31,10 +32,10 @@ public class AuthService {
     private final JwtService jwtService;
 
     @Value("${twilio.account-sid}")
-    private String serviceSid;
+    private String accountSid;
 
     @Value("${twilio.service-sid}")
-    private String accountSid;
+    private String serviceSid;
 
     @Value("${twilio.auth.token}")
     private String authToken;
@@ -55,6 +56,8 @@ public class AuthService {
 
     @Transactional
     public VerifyOtpResponseDTO verifyOtp(@Valid VerifyOtpRequestDTO requestDTO,HttpServletResponse response) {
+
+        Twilio.init(accountSid, authToken);
 
         VerificationCheck verificationCheck = VerificationCheck
                 .creator(serviceSid)
@@ -85,7 +88,7 @@ public class AuthService {
                 .builder()
                 .tokenType(TOKEN_TYPE)
                 .token(accessToken)
-                .isProfileComplete(false)
+                .isProfileComplete(user.isProfileCompleted())
                 .build();
 
     }
@@ -93,6 +96,34 @@ public class AuthService {
     public TokenResponse refreshToken(HttpServletRequest request){
         String refreshToken = extractFromCookie(request);
 
+        if (refreshToken==null){
+            throw new RuntimeException("Refresh token missing or expired");
+        }
+
+        if (!jwtService.isTokenValid(refreshToken)){
+            throw new RuntimeException("Invalid token");
+        }
+
+        if (!"refresh".equals(jwtService.extractTokenType(refreshToken))){
+            throw new RuntimeException("Invalid token type");
+        }
+        String userIdStr = jwtService.extractSubject(refreshToken);
+        Long userId = Long.parseLong(userIdStr);
+
+        AuthUser user = authUserRepo
+                .findById(userId)
+                .orElseThrow(()-> new RuntimeException("User not found"));
+
+        if (!user.isProfileCompleted()){
+            throw new RuntimeException("Complete profile first");
+        }
+
+        String newAccessToken = jwtService.generateAccessToken(user);
+
+        return TokenResponse
+                .builder()
+                .token(newAccessToken)
+                .build();
     }
 
     //----HELPERS---------

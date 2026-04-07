@@ -2,8 +2,10 @@ package com.bharat.SpendLens.controller;
 
 import com.bharat.SpendLens.requestdto.SendOtpRequestDTO;
 import com.bharat.SpendLens.requestdto.VerifyOtpRequestDTO;
+import com.bharat.SpendLens.responsedto.TokenResponse;
 import com.bharat.SpendLens.responsedto.VerifyOtpResponseDTO;
 import com.bharat.SpendLens.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,11 @@ public class AuthController {
     @PostMapping("/verify/otp")
     public ResponseEntity<VerifyOtpResponseDTO> verifyOtp(@Valid @RequestBody VerifyOtpRequestDTO requestDTO, HttpServletResponse response){
         return ResponseEntity.status(HttpStatus.OK).body(authService.verifyOtp(requestDTO,response));
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<TokenResponse> refreshToken(HttpServletRequest request){
+        return ResponseEntity.status(HttpStatus.OK).body(authService.refreshToken(request));
     }
 
 

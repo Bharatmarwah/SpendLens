@@ -1,46 +1,77 @@
 package com.bharat.SpendLens.service;
 
 import com.bharat.SpendLens.entity.AuthUser;
-import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
 
-import java.security.Key;
+import javax.crypto.SecretKey;
 import java.util.Date;
 
 @Service
 public class JwtService {
 
-    private static final long Access_Token_Validity = 60 * 3 * 1000L;
-    private static final long Refresh_Token_Validity = 30L * 24 * 60 * 60 * 1000L;
+    private static final long ACCESS_TOKEN_VALIDITY = 3 * 60 * 1000L;
+    private static final long REFRESH_TOKEN_VALIDITY = 30L * 24 * 60 * 60 * 1000L;
 
-    private static final String secretKey="bXlTdXBlclNlY3JldEtleUZvcktpdGZsaWstQXBpR2F0ZXdheTEyMzQ1Njc4OTA=";
+    private static final String SECRET_KEY = "iEk0VqHZ2/4mB7GcD3vQ5pL9RwSxT8mK1cJ6uD4bF2s=";
 
     public String generateAccessToken(AuthUser user) {
-        return Jwts
-                .builder()
-                .subject(user.getId().toString())
-                .claim("phone",user.getPhoneNumber())
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + Access_Token_Validity))
+        return Jwts.builder()
+                .subject(String.valueOf(user.getId()))
+                .claim("phone", user.getPhoneNumber())
+                .claim("type", "access")   // 🔥 important
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_VALIDITY))
                 .signWith(getKey())
                 .compact();
     }
 
     public String generateRefreshToken(AuthUser user) {
-        return Jwts
-                .builder()
-                .subject(user.getId().toString())
-                .claim("phone",user.getPhoneNumber())
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + Refresh_Token_Validity))
+        return Jwts.builder()
+                .subject(String.valueOf(user.getId()))
+                .claim("type", "refresh")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_VALIDITY))
                 .signWith(getKey())
                 .compact();
     }
 
-    private Key getKey(){
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+    public boolean isTokenValid(String token) {
+        try {
+            Jwts.parser()
+                    .verifyWith(getKey())
+                    .build()
+                    .parseSignedClaims(token);
+
+            return true;
+
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public String extractSubject(String token) {
+        return Jwts.parser()
+                .verifyWith(getKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .getSubject();
+    }
+
+    public String extractTokenType(String token) {
+        return Jwts.parser()
+                .verifyWith(getKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("type", String.class);
+    }
+
+    private SecretKey getKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }

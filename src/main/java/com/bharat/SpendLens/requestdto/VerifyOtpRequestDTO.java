@@ -7,7 +7,10 @@ import lombok.Data;
 @Data
 public class VerifyOtpRequestDTO {
 
-    @Pattern(regexp = "^[0-9]{10}$",message = "Invalid phone number")
+    @Pattern(
+            regexp = "^\\+?[1-9]\\d{1,14}$",
+            message = "Invalid phone number (use E.164 format: +{country}{number})"
+    )
     private String phoneNumber;
 
     @Pattern(
