@@ -1,6 +1,7 @@
 package com.bharat.SpendLens.service;
 
 import com.bharat.SpendLens.entity.Expense;
+import com.bharat.SpendLens.exception.ResourceNotFoundException;
 import com.bharat.SpendLens.repository.ExpenseRepo;
 import com.bharat.SpendLens.requestdto.ExpenseRequestDTO;
 import com.bharat.SpendLens.responsedto.ExpensePageResponseDTO;
@@ -61,7 +62,7 @@ public class ExpenseService {
 
         Expense expense = expenseRepo
                 .findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new RuntimeException("Not Found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
 
         if (requestDTO.getAmount() != null) {
             expense.setAmount(requestDTO.getAmount());
@@ -120,7 +121,7 @@ public class ExpenseService {
         Long userId = Long.parseLong(userIdStr);
 
         Expense expense = expenseRepo
-                .findByIdAndUserId(id, userId).orElseThrow(() -> new RuntimeException("not found"));
+                .findByIdAndUserId(id, userId).orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
 
         expenseRepo.delete(expense);
     }

@@ -2,6 +2,8 @@ package com.bharat.SpendLens.service;
 
 
 import com.bharat.SpendLens.entity.AuthUser;
+import com.bharat.SpendLens.exception.ProfileAlreadyCompletedException;
+import com.bharat.SpendLens.exception.ResourceNotFoundException;
 import com.bharat.SpendLens.repository.AuthUserRepo;
 import com.bharat.SpendLens.requestdto.ProfileRequestDTO;
 import com.bharat.SpendLens.responsedto.ProfileResponseDTO;
@@ -25,10 +27,10 @@ public class UserService {
         Long userIdLong = Long.parseLong(userId);
 
         AuthUser user = authUserRepo.findById(userIdLong)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (user.isProfileCompleted()) {
-            throw new RuntimeException("Profile already completed");
+            throw new ProfileAlreadyCompletedException("Profile already completed");
         }
 
         user.setName(requestDTO.getName());
@@ -47,7 +49,7 @@ public class UserService {
 
         AuthUser user = authUserRepo
                 .findById(userIdLong)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         return ProfileResponseDTO
                 .builder()

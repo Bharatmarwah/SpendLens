@@ -1,6 +1,7 @@
 package com.bharat.SpendLens.service;
 
 import com.bharat.SpendLens.entity.AuthUser;
+import com.bharat.SpendLens.exception.*;
 import com.bharat.SpendLens.repository.AuthUserRepo;
 import com.bharat.SpendLens.requestdto.SendOtpRequestDTO;
 import com.bharat.SpendLens.requestdto.VerifyOtpRequestDTO;
@@ -50,7 +51,7 @@ public class AuthService {
                     "sms"
             ).create();
         } catch (Exception e) {
-            throw new RuntimeException("Error sending sms");
+            throw new SmsSendingException("Error sending sms", e);
         }
     }
 
@@ -66,7 +67,7 @@ public class AuthService {
                 .create();
 
         if (!"approved".equalsIgnoreCase(verificationCheck.getStatus())) {
-            throw new RuntimeException("Invalid OTP");
+            throw new InvalidOtpException("Invalid OTP");
         }
 
         AuthUser user = authUserRepo.findByPhoneNumber(requestDTO.getPhoneNumber())
@@ -97,25 +98,25 @@ public class AuthService {
         String refreshToken = extractFromCookie(request);
 
         if (refreshToken==null){
-            throw new RuntimeException("Refresh token missing or expired");
+            throw new InvalidTokenException("Refresh token missing or expired");
         }
 
         if (!jwtService.isTokenValid(refreshToken)){
-            throw new RuntimeException("Invalid token");
+            throw new InvalidTokenException("Invalid token");
         }
 
         if (!"refresh".equals(jwtService.extractTokenType(refreshToken))){
-            throw new RuntimeException("Invalid token type");
+            throw new InvalidTokenException("Invalid token type");
         }
         String userIdStr = jwtService.extractSubject(refreshToken);
         Long userId = Long.parseLong(userIdStr);
 
         AuthUser user = authUserRepo
                 .findById(userId)
-                .orElseThrow(()-> new RuntimeException("User not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("User not found"));
 
         if (!user.isProfileCompleted()){
-            throw new RuntimeException("Complete profile first");
+            throw new ProfileNotCompletedException("Complete profile first");
         }
 
         String newAccessToken = jwtService.generateAccessToken(user);
@@ -142,7 +143,7 @@ public class AuthService {
         String response = null;
         Cookie[] cookies = request.getCookies();
         if (cookies==null){
-            throw new RuntimeException("Cookie not found");
+            throw new CookieNotFoundException("Cookie not found");
         }
         for (Cookie c : cookies){
             if ("refresh-token".equals(c.getName())){
