@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -26,5 +26,7 @@ public class UserController {
     public ResponseEntity<ProfileResponseDTO> getProfile(){
         return ResponseEntity.ok(userService.getProfile());
     }
+
+
 
 }
