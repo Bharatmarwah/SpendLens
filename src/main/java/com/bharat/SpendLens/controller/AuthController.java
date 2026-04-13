@@ -23,20 +23,36 @@ public class AuthController {
 
     private final AuthService authService;
 
+    // sending otp api
     @PostMapping("/send/otp")
     public ResponseEntity<Void> sendOtp(@Valid @RequestBody SendOtpRequestDTO requestDTO) {
         authService.sendOtp(requestDTO);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
+    @PostMapping("/resend/otp")
+    public ResponseEntity<Void> resendOtp(@Valid @RequestBody SendOtpRequestDTO requestDTO) {
+        authService.sendOtp(requestDTO);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    // verifying opt api
     @PostMapping("/verify/otp")
     public ResponseEntity<VerifyOtpResponseDTO> verifyOtp(@Valid @RequestBody VerifyOtpRequestDTO requestDTO, HttpServletResponse response){
         return ResponseEntity.status(HttpStatus.OK).body(authService.verifyOtp(requestDTO,response));
     }
 
+    // refresh token api
     @PostMapping("/refresh-token")
     public ResponseEntity<TokenResponse> refreshToken(HttpServletRequest request){
         return ResponseEntity.status(HttpStatus.OK).body(authService.refreshToken(request));
+    }
+
+    //logout api
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response){
+        authService.logout(response);
+        return ResponseEntity.status(HttpStatus.OK).build();
     }
 
 
