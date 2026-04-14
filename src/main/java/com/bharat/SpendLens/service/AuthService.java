@@ -155,11 +155,12 @@ public class AuthService {
     }
 
     public void logout(HttpServletResponse response) {
-        ResponseCookie cookie = ResponseCookie.from("refresh-token", "")
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(0)
-                .build();
+        Cookie cookie = new Cookie("refresh-token", null);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+
+        response.addCookie(cookie);
     }
 }

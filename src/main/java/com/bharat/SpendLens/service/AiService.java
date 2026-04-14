@@ -25,16 +25,12 @@ public class AiService {
     public AiResponse askAi(AiRequest request) {
 
         try {
-            log.info("Processing AI request: {}", request.getQuery());
-
             ToolMessageResponse body = client.getToolMessageResponse(request);
 
             if (body == null || body.getType() == null) {
                 log.error("Invalid AI response: body is null or type is missing");
                 throw new RuntimeException("Invalid AI response from tool decision service");
             }
-
-            log.debug("Tool response type: {}, tool_name: {}", body.getType(), body.getToolName());
 
             if ("final_answer".equals(body.getType())) {
                 log.info("Returning final answer");
