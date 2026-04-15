@@ -1,8 +1,11 @@
 package com.bharat.SpendLens.service;
 
 import com.bharat.SpendLens.client.ToolDecisionClient;
+import com.bharat.SpendLens.entity.Expense;
+import com.bharat.SpendLens.repository.ExpenseRepo;
 import com.bharat.SpendLens.requestdto.AiRequest;
 import com.bharat.SpendLens.responsedto.AiResponse;
+import com.bharat.SpendLens.responsedto.ExpenseResponseDTO;
 import com.bharat.SpendLens.responsedto.ToolMessageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +15,7 @@ import org.springframework.stereotype.Service;
 import com.bharat.SpendLens.requestdto.ExpenseRequestDTO;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Map;
 
 @Slf4j
@@ -21,6 +25,7 @@ public class AiService {
 
     private final ToolDecisionClient client;
     private final ExpenseService expenseService;
+    private final ExpenseRepo expenseRepo;
 
     public AiResponse askAi(AiRequest request) {
 
@@ -58,6 +63,10 @@ public class AiService {
 
                     case "add_expense":
                         return handleAddExpense(args);
+
+                    case "update_expense":
+                        return handleUpdateExpense(args);
+
 
                     case "get_expense_report":
                         log.info("get_expense_report tool not yet implemented");
@@ -135,6 +144,43 @@ public class AiService {
         } catch (Exception e) {
             log.error("Error handling add_expense", e);
             throw new RuntimeException("Failed to add expense: " + e.getMessage(), e);
+        }
+    }
+
+    private AiResponse handleUpdateExpense(Map<String, Object> args) {
+
+        try {
+            Long id = args.get("id") != null
+                    ? Long.parseLong(args.get("id").toString())
+                    : null;
+
+            if (id == null) {
+                throw new RuntimeException("Missing required field: id");
+            }
+
+            BigDecimal amount = args.get("amount") != null
+                    ? new BigDecimal(args.get("amount").toString())
+                    : null;
+
+            String category = args.get("category") != null
+                    ? args.get("category").toString().toUpperCase().trim()
+                    : null;
+
+            String description = args.get("description") != null
+                    ? args.get("description").toString()
+                    : null;
+
+            ExpenseRequestDTO dto = new ExpenseRequestDTO(amount, category, description);
+
+            ExpenseResponseDTO updated = expenseService.updateExpense(id, dto);
+
+            String response = "Expense ID " + id + " updated successfully";
+
+            return new AiResponse(response);
+
+        } catch (Exception e) {
+            log.error("Error handling update_expense", e);
+            throw new RuntimeException("Failed to update expense: " + e.getMessage(), e);
         }
     }
 }

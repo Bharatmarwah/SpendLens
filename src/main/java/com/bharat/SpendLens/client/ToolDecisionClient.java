@@ -38,9 +38,4 @@ public class ToolDecisionClient {
             throw new RuntimeException("Failed to call tool decision service: " + e.getMessage(), e);
         }
     }
-
-
-
-
-
 }
