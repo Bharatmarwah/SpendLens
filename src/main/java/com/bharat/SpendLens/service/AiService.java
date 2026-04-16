@@ -1,12 +1,7 @@
 package com.bharat.SpendLens.service;
 
 import com.bharat.SpendLens.client.ToolDecisionClient;
-import com.bharat.SpendLens.exception.ExpenseProcessingException;
-import com.bharat.SpendLens.exception.InvalidAiResponseException;
-import com.bharat.SpendLens.exception.InvalidAmountException;
-import com.bharat.SpendLens.exception.InvalidToolResponseException;
-import com.bharat.SpendLens.exception.MissingFieldException;
-import com.bharat.SpendLens.exception.UnknownToolException;
+import com.bharat.SpendLens.exception.*;
 import com.bharat.SpendLens.repository.ExpenseRepo;
 import com.bharat.SpendLens.requestdto.AiRequest;
 import com.bharat.SpendLens.responsedto.AiResponse;
@@ -68,13 +63,18 @@ public class AiService {
                     case "add_expense":
                         return handleAddExpense(args);
 
+
+                    // todo : amount and id recognition can be improved
                     case "update_expense":
-                        return new AiResponse("Update Expense feature coming soon!");
+                        return handleUpdateExpense(args);
+
+
+                    case "delete_expense":
+                        return handleDeleteExpense(args);
 
 
                     case "get_expense_report":
-                        log.info("get_expense_report tool not yet implemented");
-                        return new AiResponse("Expense report feature coming soon!");
+                        return new AiResponse("Expense report feature is not implemented yet");
 
                     default:
                         log.error("Unknown tool requested: {}", toolName);
@@ -151,6 +151,9 @@ public class AiService {
         } catch (MissingFieldException | InvalidAmountException e) {
             log.error("Add expense validation error", e);
             throw e;
+        } catch (ResourceNotFoundException e) {
+            log.error("Resource not found while adding expense", e);
+            throw new ExpenseProcessingException("Failed to add expense: " + e.getMessage(), e);
         } catch (Exception e) {
             log.error("Error handling add_expense", e);
             throw new ExpenseProcessingException("Failed to add expense: " + e.getMessage(), e);
@@ -191,9 +194,40 @@ public class AiService {
         } catch (MissingFieldException e) {
             log.error("Update expense validation error", e);
             throw e;
+        } catch (ResourceNotFoundException e) {
+            log.error("Resource not found while updating expense", e);
+            throw new ExpenseProcessingException("Failed to update expense: " + e.getMessage(), e);
         } catch (Exception e) {
             log.error("Error handling update_expense", e);
             throw new ExpenseProcessingException("Failed to update expense: " + e.getMessage(), e);
         }
     }
+
+    private AiResponse handleDeleteExpense(Map<String, Object> args) {
+
+        try {
+            Long id = args.get("id") != null
+                    ? Long.parseLong(args.get("id").toString())
+                    : null;
+            if (id == null) {
+                throw new MissingFieldException("Missing required field: id");
+            }
+
+            expenseService.deleteExpense(id);
+
+            return new AiResponse("Expense ID " + id + " deleted successfully");
+        } catch (MissingFieldException e) {
+            log.error("Delete expense validation error", e);
+            throw e;
+        } catch (ResourceNotFoundException e) {
+            log.error("Resource not found while deleting expense", e);
+            throw new ExpenseProcessingException("Failed to delete expense: " + e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Error handling delete_expense", e);
+            throw new ExpenseProcessingException("Failed to delete expense: " + e.getMessage(), e);
+        }
+
+    }
+
+
 }
