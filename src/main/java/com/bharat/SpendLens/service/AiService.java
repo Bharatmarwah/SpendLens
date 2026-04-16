@@ -1,7 +1,12 @@
 package com.bharat.SpendLens.service;
 
 import com.bharat.SpendLens.client.ToolDecisionClient;
-import com.bharat.SpendLens.entity.Expense;
+import com.bharat.SpendLens.exception.ExpenseProcessingException;
+import com.bharat.SpendLens.exception.InvalidAiResponseException;
+import com.bharat.SpendLens.exception.InvalidAmountException;
+import com.bharat.SpendLens.exception.InvalidToolResponseException;
+import com.bharat.SpendLens.exception.MissingFieldException;
+import com.bharat.SpendLens.exception.UnknownToolException;
 import com.bharat.SpendLens.repository.ExpenseRepo;
 import com.bharat.SpendLens.requestdto.AiRequest;
 import com.bharat.SpendLens.responsedto.AiResponse;
@@ -15,7 +20,6 @@ import org.springframework.stereotype.Service;
 import com.bharat.SpendLens.requestdto.ExpenseRequestDTO;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.Map;
 
 @Slf4j
@@ -34,7 +38,7 @@ public class AiService {
 
             if (body == null || body.getType() == null) {
                 log.error("Invalid AI response: body is null or type is missing");
-                throw new RuntimeException("Invalid AI response from tool decision service");
+                throw new InvalidAiResponseException("Invalid AI response from tool decision service");
             }
 
             if ("final_answer".equals(body.getType())) {
@@ -49,12 +53,12 @@ public class AiService {
 
                 if (toolName == null || toolName.trim().isEmpty()) {
                     log.error("Tool name is null or empty in tool_call response");
-                    throw new RuntimeException("Invalid tool response: tool_name is missing");
+                    throw new InvalidToolResponseException("Invalid tool response");
                 }
 
                 if (args == null) {
                     log.error("Arguments are null for tool: {}", toolName);
-                    throw new RuntimeException("Invalid tool response: arguments are missing");
+                    throw new InvalidToolResponseException("Invalid tool response");
                 }
 
                 log.info("Tool call detected: {} with args: {}", toolName, args);
@@ -65,7 +69,7 @@ public class AiService {
                         return handleAddExpense(args);
 
                     case "update_expense":
-                        return handleUpdateExpense(args);
+                        return new AiResponse("Update Expense feature coming soon!");
 
 
                     case "get_expense_report":
@@ -74,16 +78,19 @@ public class AiService {
 
                     default:
                         log.error("Unknown tool requested: {}", toolName);
-                        throw new RuntimeException("Unknown tool: " + toolName);
+                        throw new UnknownToolException("Unknown tool: " + toolName);
                 }
             }
 
             log.error("Unexpected response type: {}", body.getType());
-            throw new RuntimeException("Unexpected AI response type: " + body.getType());
+            throw new InvalidAiResponseException("Unexpected AI response type: " + body.getType());
 
+        } catch (InvalidAiResponseException | InvalidToolResponseException | UnknownToolException e) {
+            log.error("AI request validation error", e);
+            throw e;
         } catch (Exception e) {
             log.error("Error processing AI request", e);
-            throw new RuntimeException("Failed to process AI request: " + e.getMessage(), e);
+            throw new ExpenseProcessingException("Failed to process AI request: " + e.getMessage(), e);
         }
     }
 
@@ -95,12 +102,12 @@ public class AiService {
 
             if (amountObj == null) {
                 log.error("Amount is missing from add_expense arguments");
-                throw new RuntimeException("Missing required field: amount");
+                throw new MissingFieldException("Missing required field");
             }
 
             if (categoryObj == null) {
                 log.error("Category is missing from add_expense arguments");
-                throw new RuntimeException("Missing required field: category");
+                throw new MissingFieldException("Missing required field");
             }
 
             BigDecimal amount;
@@ -109,18 +116,18 @@ public class AiService {
 
                 if (amount.compareTo(BigDecimal.ZERO) <= 0) {
                     log.error("Invalid amount: amount must be > 0, got {}", amount);
-                    throw new RuntimeException("Amount must be greater than 0");
+                    throw new InvalidAmountException("Amount must be greater than 0");
                 }
 
             } catch (NumberFormatException e) {
                 log.error("Invalid amount format: {}", amountObj, e);
-                throw new RuntimeException("Invalid amount: " + amountObj);
+                throw new InvalidAmountException("Invalid amount: " + amountObj, e);
             }
 
             String category = categoryObj.toString().toUpperCase().trim();
             if (category.isEmpty()) {
                 log.error("Category is empty");
-                throw new RuntimeException("Category cannot be empty");
+                throw new MissingFieldException("Category cannot be empty");
             }
 
             String description = args.get("description") != null
@@ -141,9 +148,12 @@ public class AiService {
 
             return new AiResponse(response);
 
+        } catch (MissingFieldException | InvalidAmountException e) {
+            log.error("Add expense validation error", e);
+            throw e;
         } catch (Exception e) {
             log.error("Error handling add_expense", e);
-            throw new RuntimeException("Failed to add expense: " + e.getMessage(), e);
+            throw new ExpenseProcessingException("Failed to add expense: " + e.getMessage(), e);
         }
     }
 
@@ -155,7 +165,7 @@ public class AiService {
                     : null;
 
             if (id == null) {
-                throw new RuntimeException("Missing required field: id");
+                throw new MissingFieldException("Missing required field: id");
             }
 
             BigDecimal amount = args.get("amount") != null
@@ -178,9 +188,12 @@ public class AiService {
 
             return new AiResponse(response);
 
+        } catch (MissingFieldException e) {
+            log.error("Update expense validation error", e);
+            throw e;
         } catch (Exception e) {
             log.error("Error handling update_expense", e);
-            throw new RuntimeException("Failed to update expense: " + e.getMessage(), e);
+            throw new ExpenseProcessingException("Failed to update expense: " + e.getMessage(), e);
         }
     }
 }
