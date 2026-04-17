@@ -15,7 +15,6 @@ public class JwtService {
     private static final long ACCESS_TOKEN_VALIDITY = 3 * 60 * 1000L;
     private static final long REFRESH_TOKEN_VALIDITY = 30L * 24 * 60 * 60 * 1000L;
 
-    // Generate this using: openssl rand -base64 32
     private static final String SECRET_KEY = "myVerySecureSecretKeyFor256BitHmacSha256Algorithm123456";
 
     public String generateAccessToken(AuthUser user) {

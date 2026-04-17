@@ -4,6 +4,7 @@ import com.bharat.SpendLens.client.ToolDecisionClient;
 import com.bharat.SpendLens.exception.*;
 import com.bharat.SpendLens.repository.ExpenseRepo;
 import com.bharat.SpendLens.requestdto.AiRequest;
+import com.bharat.SpendLens.requestdto.ReportRequest;
 import com.bharat.SpendLens.responsedto.AiResponse;
 import com.bharat.SpendLens.responsedto.ExpenseResponseDTO;
 import com.bharat.SpendLens.responsedto.ToolMessageResponse;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Service;
 import com.bharat.SpendLens.requestdto.ExpenseRequestDTO;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -64,7 +67,6 @@ public class AiService {
                         return handleAddExpense(args);
 
 
-                    // todo : amount and id recognition can be improved
                     case "update_expense":
                         return handleUpdateExpense(args);
 
@@ -73,8 +75,8 @@ public class AiService {
                         return handleDeleteExpense(args);
 
 
-                    case "get_expense_report":
-                        return new AiResponse("Expense report feature is not implemented yet");
+                    case "expense_report":
+                        return handleExpenseReport(args);
 
                     default:
                         log.error("Unknown tool requested: {}", toolName);
@@ -91,6 +93,96 @@ public class AiService {
         } catch (Exception e) {
             log.error("Error processing AI request", e);
             throw new ExpenseProcessingException("Failed to process AI request: " + e.getMessage(), e);
+        }
+    }
+
+    private AiResponse handleExpenseReport(Map<String, Object> args) {
+
+        try {
+
+            Long expenseId = args.get("id") != null
+                    ? Long.parseLong(args.get("id").toString())
+                    : null;
+
+            // Extract parameters with null-safe handling
+            String category = args.get("category") != null
+                    ? args.get("category").toString().toUpperCase().trim()
+                    : null;
+
+            BigDecimal minAmount = args.get("min_amount") != null
+                    ? new BigDecimal(args.get("min_amount").toString())
+                    : null;
+
+            BigDecimal maxAmount = args.get("max_amount") != null
+                    ? new BigDecimal(args.get("max_amount").toString())
+                    : null;
+
+            // Extract date parameters if provided
+            Instant startDate = args.get("start_date") != null
+                    ? Instant.parse(args.get("start_date").toString())
+                    : null;
+
+            Instant endDate = args.get("end_date") != null
+                    ? Instant.parse(args.get("end_date").toString())
+                    : null;
+
+            log.info("Generating expense report: category={}, minAmount={}, maxAmount={}, startDate={}, endDate={}",
+                    category, minAmount, maxAmount, startDate, endDate);
+
+            // Call service to get filtered expenses
+            // Null values are handled by the query (IS NULL checks)
+            List<ExpenseResponseDTO> expenses = expenseService.getAllExpenseForUser(
+                    expenseId,
+                    category,
+                    minAmount,
+                    maxAmount,
+                    startDate,
+                    endDate
+            );
+
+            if (expenses == null || expenses.isEmpty()) {
+                log.info("No expenses found for the given filters");
+                return new AiResponse("No expenses found matching your criteria.");
+            }
+
+            StringBuilder reportBuilder = new StringBuilder();
+            reportBuilder.append("Found ").append(expenses.size()).append(" expense(s):\n\n");
+
+            BigDecimal totalAmount = BigDecimal.ZERO;
+            int numberOfExpenses = 0;
+            for (ExpenseResponseDTO expense : expenses) {
+                reportBuilder.append("• ID: ").append(expense.getId())
+                        .append(" | Amount: ₹").append(expense.getAmount())
+                        .append(" | Category: ").append(expense.getCategory())
+                        .append(" | Description: ").append(expense.getDescription())
+                        .append(" | CreatedDate: ").append(expense.getCreatedAt())
+                        .append(" | UpdatedDate: ").append(expense.getUpdatedAt())
+                        .append("\n");
+                totalAmount = totalAmount.add(expense.getAmount());
+                numberOfExpenses = expenses.size();
+            }
+
+            reportBuilder.append("\nTotal Amount: ₹").append(totalAmount);
+            reportBuilder.append("\nNumber of Expenses: ").append(numberOfExpenses);
+
+            String generatedReport = reportBuilder.toString();
+
+            log.info("Expense report generated successfully");
+
+
+            AiResponse llmSummary = client.getExpenseSummary(new ReportRequest(generatedReport));
+
+            if (llmSummary != null && llmSummary.getMessage() != null) {
+                log.info("LLM summarization completed");
+                return new AiResponse(llmSummary.getMessage());
+            }
+
+            log.warn("LLM summarization failed, returning generated report");
+            return new AiResponse(generatedReport);
+
+        } catch (Exception e) {
+            log.error("Error generating expense report: {}", e.getMessage(), e);
+            throw new ExpenseProcessingException("Failed to generate expense report: " + e.getMessage(), e);
         }
     }
 
@@ -213,15 +305,17 @@ public class AiService {
                 throw new MissingFieldException("Missing required field: id");
             }
 
-            expenseService.deleteExpense(id);
-
-            return new AiResponse("Expense ID " + id + " deleted successfully");
+            try {
+                expenseService.deleteExpense(id);
+                return new AiResponse("Expense ID " + id + " deleted successfully");
+            } catch (ResourceNotFoundException e) {
+                // Return a friendly message instead of throwing exception
+                log.warn("Expense not found for deletion: id={}", id);
+                return new AiResponse("Expense ID " + id + " not found. It may have already been deleted.");
+            }
         } catch (MissingFieldException e) {
             log.error("Delete expense validation error", e);
             throw e;
-        } catch (ResourceNotFoundException e) {
-            log.error("Resource not found while deleting expense", e);
-            throw new ExpenseProcessingException("Failed to delete expense: " + e.getMessage(), e);
         } catch (Exception e) {
             log.error("Error handling delete_expense", e);
             throw new ExpenseProcessingException("Failed to delete expense: " + e.getMessage(), e);

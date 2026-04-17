@@ -1,8 +1,6 @@
 package com.bharat.SpendLens.service;
 
-
 import com.bharat.SpendLens.entity.AuthUser;
-import com.bharat.SpendLens.exception.ProfileAlreadyCompletedException;
 import com.bharat.SpendLens.exception.ResourceNotFoundException;
 import com.bharat.SpendLens.repository.AuthUserRepo;
 import com.bharat.SpendLens.requestdto.ProfileRequestDTO;
@@ -41,7 +39,11 @@ public class UserService {
 
         user.setName(requestDTO.getName());
         user.setEmail(requestDTO.getEmail());
-        user.setProfileCompleted(true);
+
+
+        if (!user.isProfileCompleted()) {
+            user.setProfileCompleted(true);
+        }
 
         authUserRepo.save(user);
     }

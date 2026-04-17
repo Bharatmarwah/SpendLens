@@ -15,6 +15,7 @@ public class ExpenseResponseDTO {
     private String description;
     private BigDecimal amount;
     private Instant createdAt;
+    private Instant updatedAt;
 
 
 

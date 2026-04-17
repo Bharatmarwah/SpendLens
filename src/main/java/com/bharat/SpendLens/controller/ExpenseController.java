@@ -10,7 +10,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 @RestController
 @RequestMapping("/expenses")
@@ -34,12 +36,14 @@ public class ExpenseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) BigDecimal minAmount,
+            @RequestParam(required = false) BigDecimal maxAmount,
             @RequestParam(required = false) Instant startDate,
             @RequestParam(required = false) Instant endDate
     ) {
 
         return ResponseEntity.ok(
-                expenseService.getExpenses(page, size, category, startDate, endDate)
+                expenseService.getExpenses(page, size, category, minAmount, maxAmount, startDate, endDate)
         );
     }
 

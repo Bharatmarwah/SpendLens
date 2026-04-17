@@ -1,6 +1,8 @@
 package com.bharat.SpendLens.client;
 
 import com.bharat.SpendLens.requestdto.AiRequest;
+import com.bharat.SpendLens.requestdto.ReportRequest;
+import com.bharat.SpendLens.responsedto.AiResponse;
 import com.bharat.SpendLens.responsedto.ToolMessageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,28 @@ public class ToolDecisionClient {
             throw new RuntimeException("FastAPI service error: " + e.getMessage(), e);
         } catch (Exception e) {
             throw new RuntimeException("Failed to call tool decision service: " + e.getMessage(), e);
+        }
+    }
+
+    public AiResponse getExpenseSummary(ReportRequest request) {
+        try {
+            AiResponse response = webClient.post()
+                    .uri("/generate-report")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(AiResponse.class)
+                    .block();
+
+            if (response == null) {
+                throw new RuntimeException("Tool decision service returned null response");
+            }
+            return response;
+
+        } catch (WebClientResponseException e) {
+            throw new RuntimeException("FastAPI service error: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to call report generate service: " + e.getMessage(), e);
         }
     }
 }

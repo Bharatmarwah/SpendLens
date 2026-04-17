@@ -15,7 +15,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -89,13 +91,13 @@ public class ExpenseService {
     }
 
     @Transactional(readOnly = true)
-    public ExpensePageResponseDTO getExpenses(int page, int size, String category, Instant startDate, Instant endDate) {
+    public ExpensePageResponseDTO getExpenses(int page, int size, String category, BigDecimal minAmount, BigDecimal maxAmount, Instant startDate, Instant endDate) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         String userIdStr = authentication.getName();
         Long userId = Long.parseLong(userIdStr);
 
-        Page<Expense> expensePage = expenseRepo.findByUserIdAndFilters(userId, category, startDate, endDate, PageRequest.of(page, size));
+        Page<Expense> expensePage = expenseRepo.findByUserIdAndFilters(userId, category, minAmount, maxAmount ,startDate, endDate, PageRequest.of(page, size));
 
         return ExpensePageResponseDTO
                 .builder()
@@ -124,5 +126,25 @@ public class ExpenseService {
                 .findByIdAndUserId(id, userId).orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
 
         expenseRepo.delete(expense);
+    }
+
+    @Transactional
+    public List<ExpenseResponseDTO> getAllExpenseForUser(Long expenseId , String category, BigDecimal minAmount, BigDecimal maxAmount, Instant startDate, Instant endDate){
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userIdStr = authentication.getName();
+        Long userId = Long.parseLong(userIdStr);
+
+        List<Expense> expenses = expenseRepo.findExpenseByFilter(userId, expenseId, category, minAmount, maxAmount, startDate, endDate);
+
+        return expenses.stream().map(expense -> ExpenseResponseDTO
+                .builder()
+                .id(expense.getId())
+                .category(expense.getCategory())
+                .description(expense.getDescription())
+                .amount(expense.getAmount())
+                .createdAt(expense.getCreatedAt())
+                .build())
+                .toList();
     }
 }
