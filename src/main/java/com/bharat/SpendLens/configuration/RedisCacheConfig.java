@@ -19,26 +19,26 @@ import java.time.Duration;
 public class RedisCacheConfig {
 
 
-    @Bean
-    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory){
-
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-
-        RedisCacheConfiguration
-                configuration = RedisCacheConfiguration
-                .defaultCacheConfig()
-                .disableCachingNullValues()
-                .entryTtl(Duration.ofMinutes(20))
-                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer(mapper)));
-
-
-        return RedisCacheManager
-                .builder(connectionFactory)
-                .cacheDefaults(configuration)
-                .build();
-    }
+//    @Bean
+//    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory){
+//
+//        ObjectMapper mapper = new ObjectMapper();
+//        mapper.registerModule(new JavaTimeModule());
+//
+//        RedisCacheConfiguration
+//                configuration = RedisCacheConfiguration
+//                .defaultCacheConfig()
+//                .disableCachingNullValues()
+//                .entryTtl(Duration.ofMinutes(20))
+//                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+//                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer(mapper)));
+//
+//
+//        return RedisCacheManager
+//                .builder(connectionFactory)
+//                .cacheDefaults(configuration)
+//                .build();
+//    }
 
 
 }

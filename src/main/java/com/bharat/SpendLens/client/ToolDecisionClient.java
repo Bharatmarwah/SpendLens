@@ -62,4 +62,23 @@ public class ToolDecisionClient {
             throw new RuntimeException("Failed to call report generate service: " + e.getMessage(), e);
         }
     }
+    public ToolMessageResponse getToolExtraction(AiRequest request){
+        try{
+            com.bharat.SpendLens.responsedto.ToolMessageResponse response
+                    = webClient
+                    .post()
+                    .uri("/decide-tool")
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(ToolMessageResponse.class)
+                    .block();
+
+            if(response==null){
+                throw new RuntimeException("Tool decision service returning null");
+            }
+            return response;
+        }catch (Exception e){
+            throw new RuntimeException("FastAPI failed to response "+e.getMessage());
+        }
+    }
 }

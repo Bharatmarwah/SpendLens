@@ -6,6 +6,7 @@ import com.bharat.SpendLens.responsedto.AiResponse;
 import com.bharat.SpendLens.responsedto.ExpenseResponseDTO;
 import com.bharat.SpendLens.service.AiService;
 import com.bharat.SpendLens.service.ExpenseService;
+import com.bharat.SpendLens.service.OrchestratorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,7 @@ public class AiController {
 
     private final AiService aiService;
     private final ExpenseService expenseService;
+    private final OrchestratorService orchestratorService;
 
     @PostMapping("/ask")
     public ResponseEntity<AiResponse> askAi(@RequestBody AiRequest request) {
@@ -32,6 +34,13 @@ public class AiController {
         request.setUserId(userIdStr);
         return ResponseEntity.ok(aiService.askAi(request));
     }
+
+    @PostMapping("/ask/agent")
+    public ResponseEntity<AiResponse> askAgent(@RequestBody AiRequest request) {
+        return ResponseEntity.ok(orchestratorService.askAgent(request));
+    }
+
+
 
     @GetMapping("/filter")
     public ResponseEntity<List<ExpenseResponseDTO>> getExpensesForUser(

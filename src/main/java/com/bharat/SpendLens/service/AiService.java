@@ -166,6 +166,7 @@ public class AiService {
             reportBuilder.append("\nNumber of Expenses: ").append(numberOfExpenses);
 
             String generatedReport = reportBuilder.toString();
+            System.out.println("Generated Report:\n" + generatedReport);
 
             log.info("Expense report generated successfully");
 
