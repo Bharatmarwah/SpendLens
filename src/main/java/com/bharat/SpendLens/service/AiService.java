@@ -4,7 +4,7 @@ import com.bharat.SpendLens.client.ToolDecisionClient;
 import com.bharat.SpendLens.exception.*;
 import com.bharat.SpendLens.repository.ExpenseRepo;
 import com.bharat.SpendLens.requestdto.AiRequest;
-import com.bharat.SpendLens.requestdto.ReportRequest;
+import com.bharat.SpendLens.requestdto.AiReportRequest;
 import com.bharat.SpendLens.responsedto.AiResponse;
 import com.bharat.SpendLens.responsedto.ExpenseResponseDTO;
 import com.bharat.SpendLens.responsedto.ToolMessageResponse;
@@ -171,7 +171,7 @@ public class AiService {
             log.info("Expense report generated successfully");
 
 
-            AiResponse llmSummary = client.getExpenseSummary(new ReportRequest(generatedReport));
+            AiResponse llmSummary = client.getExpenseSummary(new AiReportRequest(generatedReport));
 
             if (llmSummary != null && llmSummary.getMessage() != null) {
                 log.info("LLM summarization completed");

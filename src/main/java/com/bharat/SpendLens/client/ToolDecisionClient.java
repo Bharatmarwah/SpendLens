@@ -1,7 +1,7 @@
 package com.bharat.SpendLens.client;
 
 import com.bharat.SpendLens.requestdto.AiRequest;
-import com.bharat.SpendLens.requestdto.ReportRequest;
+import com.bharat.SpendLens.requestdto.AiReportRequest;
 import com.bharat.SpendLens.responsedto.AiResponse;
 import com.bharat.SpendLens.responsedto.ToolMessageResponse;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +41,7 @@ public class ToolDecisionClient {
         }
     }
 
-    public AiResponse getExpenseSummary(ReportRequest request) {
+    public AiResponse getExpenseSummary(AiReportRequest request) {
         try {
             AiResponse response = webClient.post()
                     .uri("/generate-report")
