@@ -6,6 +6,7 @@ import com.bharat.SpendLens.exception.InvalidAmountException;
 import com.bharat.SpendLens.exception.MissingFieldException;
 import com.bharat.SpendLens.exception.ResourceNotFoundException;
 import com.bharat.SpendLens.requestdto.AiRequest;
+import com.bharat.SpendLens.requestdto.DeleteExpensesRequestDTO;
 import com.bharat.SpendLens.requestdto.ExpenseRequestDTO;
 import com.bharat.SpendLens.responsedto.AiResponse;
 import com.bharat.SpendLens.responsedto.ExpenseResponseDTO;
@@ -16,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -164,27 +166,56 @@ public class OrchestratorService {
     private AiResponse handleDeleteExpense(Map<String, Object> args) {
 
         try {
-            Long id = args.get("id") != null
-                    ? Long.parseLong(args.get("id").toString())
-                    : null;
-            if (id == null) {
-                throw new MissingFieldException("Missing required field: id");
+            Object idsObj = args.get("ids");
+
+            if (idsObj == null) {
+                throw new MissingFieldException("Missing required field: ids");
             }
 
-            try {
-                expenseService.deleteExpense(id);
-                return new AiResponse("Expense ID " + id + " deleted successfully");
-            } catch (ResourceNotFoundException e) {
-                // Return a friendly message instead of throwing exception
-                log.warn("Expense not found for deletion: id={}", id);
-                return new AiResponse("Expense ID " + id + " not found. It may have already been deleted.");
+            List<Long> ids = (List<Long>) idsObj;
+
+            if (ids == null || ids.isEmpty()) {
+                throw new MissingFieldException("Ids list cannot be empty");
             }
+
+            DeleteExpensesRequestDTO requestDTO = new DeleteExpensesRequestDTO();
+            requestDTO.setId(ids);
+
+            // Get the actual response with deleted count
+            com.bharat.SpendLens.responsedto.DeleteResponse deleteResponse =
+                    expenseService.deleteMultipleExpenses(requestDTO);
+
+            // Use the actual deleted count, not the requested count
+            String response;
+            int deletedCount = deleteResponse.getDeletedCount();
+            int requestedCount = ids.size();
+            String expenseWord = deletedCount == 1 ? "expense" : "expenses";
+            String requestedWord = requestedCount == 1 ? "expense" : "expenses";
+
+            if (deletedCount == requestedCount) {
+                response = "Successfully deleted " + deletedCount + " " + expenseWord;
+            } else {
+                int notFound = requestedCount - deletedCount;
+                String notFoundWord = notFound == 1 ? "expense" : "expenses";
+                response = "Deleted " + deletedCount + " out of " + requestedCount +
+                        " requested " + requestedWord + ". " + notFound +
+                        " " + notFoundWord + " were not found.";
+            }
+
+            log.info("Expenses deleted: {}", response);
+
+            return new AiResponse(response);
+
         } catch (MissingFieldException e) {
             log.error("Delete expense validation error", e);
             throw e;
+        } catch (ResourceNotFoundException e) {
+            // Return a friendly message instead of throwing exception
+            log.warn("Some expenses not found for deletion: {}", e.getMessage());
+            return new AiResponse("Some expenses were not found. They may have already been deleted.");
         } catch (Exception e) {
             log.error("Error handling delete_expense", e);
-            throw new ExpenseProcessingException("Failed to delete expense: " + e.getMessage(), e);
+            throw new ExpenseProcessingException("Failed to delete expense(s): " + e.getMessage(), e);
         }
 
     }

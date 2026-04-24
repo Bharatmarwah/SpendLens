@@ -51,4 +51,6 @@ public interface ExpenseRepo extends JpaRepository<Expense,Long>{
             @Param("startDate") Instant startDate,
             @Param("endDate") Instant endDate
     );
+
+    List<Expense> findAllByIdInAndUserId(List<Long> ids, Long userId);
 }

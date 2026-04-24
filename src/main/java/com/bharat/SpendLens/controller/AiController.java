@@ -2,7 +2,9 @@ package com.bharat.SpendLens.controller;
 
 import com.bharat.SpendLens.entity.Expense;
 import com.bharat.SpendLens.requestdto.AiRequest;
+import com.bharat.SpendLens.requestdto.DeleteExpensesRequestDTO;
 import com.bharat.SpendLens.responsedto.AiResponse;
+import com.bharat.SpendLens.responsedto.DeleteResponse;
 import com.bharat.SpendLens.responsedto.ExpenseResponseDTO;
 import com.bharat.SpendLens.service.AiService;
 import com.bharat.SpendLens.service.ExpenseService;
@@ -40,8 +42,6 @@ public class AiController {
         return ResponseEntity.ok(orchestratorService.askAgent(request));
     }
 
-
-
     @GetMapping("/filter")
     public ResponseEntity<List<ExpenseResponseDTO>> getExpensesForUser(
             @RequestParam(required = false) Long expenseId,
@@ -53,5 +53,10 @@ public class AiController {
     ) {
         return ResponseEntity.status(HttpStatus.OK).body(expenseService.getAllExpenseForUser(expenseId, category, minAmount, maxAmount, startDate, endDate));
 
+    }
+
+    @DeleteMapping("/delete")
+    public ResponseEntity<DeleteResponse> deleteMultipleExpenses(@RequestBody DeleteExpensesRequestDTO requestDTO){
+        return ResponseEntity.status(HttpStatus.OK).body(expenseService.deleteMultipleExpenses(requestDTO));
     }
 }

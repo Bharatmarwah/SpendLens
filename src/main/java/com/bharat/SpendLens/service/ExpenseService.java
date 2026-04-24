@@ -1,15 +1,17 @@
 package com.bharat.SpendLens.service;
 
 import com.bharat.SpendLens.entity.Expense;
+import com.bharat.SpendLens.exception.ExpenseNotFoundException;
 import com.bharat.SpendLens.exception.ResourceNotFoundException;
 import com.bharat.SpendLens.repository.ExpenseRepo;
+import com.bharat.SpendLens.requestdto.DeleteExpensesRequestDTO;
 import com.bharat.SpendLens.requestdto.ExpenseRequestDTO;
+import com.bharat.SpendLens.responsedto.DeleteResponse;
 import com.bharat.SpendLens.responsedto.ExpensePageResponseDTO;
 import com.bharat.SpendLens.responsedto.ExpenseResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
@@ -21,6 +23,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ExpenseService {
@@ -159,4 +162,38 @@ public class ExpenseService {
                 .build())
                 .toList();
     }
+
+    @Transactional
+    public DeleteResponse deleteMultipleExpenses(DeleteExpensesRequestDTO requestDTO) {
+
+        // Validation
+        if (requestDTO.getId() == null || requestDTO.getId().isEmpty()) {
+            throw new IllegalArgumentException("No expense IDs provided");
+        }
+        if (requestDTO.getId().size() > 100) {
+            throw new IllegalArgumentException("Cannot delete more than 100 at once");
+        }
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long userId = Long.parseLong(authentication.getName());
+
+        List<Expense> expensesToDelete = expenseRepo.findAllByIdInAndUserId(
+                requestDTO.getId(),
+                userId
+        );
+
+        if (expensesToDelete.isEmpty()) {
+            throw new ExpenseNotFoundException("No expenses found to delete");
+        }
+
+        if (expensesToDelete.size() != requestDTO.getId().size()) {
+            log.warn("Only {}/{} expenses found", expensesToDelete.size(), requestDTO.getId().size());
+        }
+
+        expenseRepo.deleteAll(expensesToDelete);
+        log.info("Deleted {} expenses for user {}", expensesToDelete.size(), userId);
+
+        return new DeleteResponse("success", expensesToDelete.size() + " deleted", expensesToDelete.size());
+    }
+
 }
