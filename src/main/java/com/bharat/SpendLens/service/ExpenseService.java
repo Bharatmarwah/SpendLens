@@ -1,7 +1,7 @@
 package com.bharat.SpendLens.service;
 
 import com.bharat.SpendLens.entity.Expense;
-import com.bharat.SpendLens.exception.ExpenseNotFoundException;
+import com.bharat.SpendLens.exception.ExpenseProcessingException;
 import com.bharat.SpendLens.exception.ResourceNotFoundException;
 import com.bharat.SpendLens.repository.ExpenseRepo;
 import com.bharat.SpendLens.requestdto.DeleteExpensesRequestDTO;
@@ -54,7 +54,8 @@ public class ExpenseService {
                 .category(expense.getCategory())
                 .description(expense.getDescription())
                 .amount(expense.getAmount())
-                .createdAt(expense.getCreatedAt())
+                .createdAt(ExpenseResponseDTO.formatToIndiaTime(expense.getCreatedAt()))
+                .updatedAt(ExpenseResponseDTO.formatToIndiaTime(expense.getUpdatedAt()))
                 .build();
     }
 
@@ -92,7 +93,8 @@ public class ExpenseService {
                 .category(expense.getCategory())
                 .description(expense.getDescription())
                 .amount(expense.getAmount())
-                .createdAt(expense.getCreatedAt())
+                .createdAt(ExpenseResponseDTO.formatToIndiaTime(expense.getCreatedAt()))
+                .updatedAt(ExpenseResponseDTO.formatToIndiaTime(expense.getUpdatedAt()))
                 .build();
     }
 
@@ -117,7 +119,8 @@ public class ExpenseService {
                         .category(expense.getCategory())
                         .description(expense.getDescription())
                         .amount(expense.getAmount())
-                        .createdAt(expense.getCreatedAt())
+                        .createdAt(ExpenseResponseDTO.formatToIndiaTime(expense.getCreatedAt()))
+                        .updatedAt(ExpenseResponseDTO.formatToIndiaTime(expense.getUpdatedAt()))
                         .build()).toList())
                 .page(expensePage.getNumber())
                 .totalElements(expensePage.getTotalElements())
@@ -158,7 +161,8 @@ public class ExpenseService {
                 .category(expense.getCategory())
                 .description(expense.getDescription())
                 .amount(expense.getAmount())
-                .createdAt(expense.getCreatedAt())
+                .createdAt(ExpenseResponseDTO.formatToIndiaTime(expense.getCreatedAt()))
+                .updatedAt(ExpenseResponseDTO.formatToIndiaTime(expense.getUpdatedAt()))
                 .build())
                 .toList();
     }
@@ -183,7 +187,7 @@ public class ExpenseService {
         );
 
         if (expensesToDelete.isEmpty()) {
-            throw new ExpenseNotFoundException("No expenses found to delete");
+            throw new ExpenseProcessingException("No expenses found to delete");
         }
 
         if (expensesToDelete.size() != requestDTO.getId().size()) {

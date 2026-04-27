@@ -17,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +28,7 @@ public class OrchestratorService {
 
     private final ToolDecisionClient toolDecisionClient;
     private final ExpenseService expenseService;
+    private final DateZone dateZone;
 
     public AiResponse askAgent(AiRequest request) {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -47,12 +49,92 @@ public class OrchestratorService {
                 return handleDeleteExpense(response.getArguments());
             }
             if (response.getToolName().equals("get_summary_report")){
-                return new AiResponse("Coming soon");
+                return handleExpenseReport(response.getArguments());
             }
         }
 
         return new AiResponse(response.getMessage());
     }
+
+    private AiResponse handleExpenseReport(Map<String, Object> args) {
+        try {
+            // Extract parameters with null-safe handling
+            Long expenseId = null;
+            if (args.get("expense_id") != null) {
+                try {
+                    expenseId = Long.parseLong(args.get("expense_id").toString());
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid expense_id format: {}", args.get("expense_id"));
+                }
+            }
+
+            String category = args.get("category") != null
+                    ? args.get("category").toString().toUpperCase().trim()
+                    : null;
+
+            BigDecimal minAmount = null;
+            if (args.get("min_amount") != null) {
+                try {
+                    minAmount = new BigDecimal(args.get("min_amount").toString());
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid min_amount format: {}", args.get("min_amount"));
+                }
+            }
+
+            BigDecimal maxAmount = null;
+            if (args.get("max_amount") != null) {
+                try {
+                    maxAmount = new BigDecimal(args.get("max_amount").toString());
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid max_amount format: {}", args.get("max_amount"));
+                }
+            }
+
+            // ✅ KEY: Convert IST dates to UTC date range for database query
+            Instant startDate = null;
+            if (args.get("start_date") != null) {
+                try {
+                    // Convert IST start of day to UTC
+                    startDate = dateZone.convertToInstant(args.get("start_date").toString());
+                    log.info("Start date (IST) {} converted to UTC: {}", args.get("start_date"), startDate);
+                } catch (Exception e) {
+                    log.warn("Invalid start_date format: {}", args.get("start_date"), e);
+                }
+            }
+
+            Instant endDate = null;
+            if (args.get("end_date") != null) {
+                try {
+                    // Convert IST end of day to UTC
+                    endDate = dateZone.convertToInstantEndOfDay(args.get("end_date").toString());
+                    log.info("End date (IST) {} converted to UTC: {}", args.get("end_date"), endDate);
+                } catch (Exception e) {
+                    log.warn("Invalid end_date format: {}", args.get("end_date"), e);
+                }
+            }
+
+            log.info("Generating expense report: expenseId={}, category={}, minAmount={}, maxAmount={}, startDate={}, endDate={}",
+                    expenseId, category, minAmount, maxAmount, startDate, endDate);
+
+            // Call service with null values (handled by query IS NULL checks)
+            List<ExpenseResponseDTO> allExpenseForUser = expenseService.getAllExpenseForUser(
+                    expenseId, category, minAmount, maxAmount, startDate, endDate
+            );
+
+            if (allExpenseForUser == null || allExpenseForUser.isEmpty()) {
+                log.info("No expenses found for the given filters");
+                return new AiResponse("No expenses found matching your criteria.");
+            }
+
+            log.info("Found {} expenses", allExpenseForUser.size());
+            return new AiResponse("Here is your expense report with " + allExpenseForUser.size() + " expenses matching the criteria.");
+
+        } catch (Exception e) {
+            log.error("Error generating expense report: {}", e.getMessage(), e);
+            throw new ExpenseProcessingException("Failed to generate expense report: " + e.getMessage(), e);
+        }
+    }
+
 
     private AiResponse handleAddExpense(Map<String, Object> args) {
 

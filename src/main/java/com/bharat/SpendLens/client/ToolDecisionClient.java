@@ -76,6 +76,7 @@ public class ToolDecisionClient {
             if(response==null){
                 throw new RuntimeException("Tool decision service returning null");
             }
+
             return response;
         }catch (Exception e){
             throw new RuntimeException("FastAPI failed to response "+e.getMessage());
