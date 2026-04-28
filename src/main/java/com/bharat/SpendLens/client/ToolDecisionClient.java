@@ -18,28 +18,6 @@ public class ToolDecisionClient {
 
     private final WebClient webClient;
 
-    public ToolMessageResponse getToolMessageResponse(AiRequest request) {
-        try {
-            ToolMessageResponse response = webClient
-                    .post()
-                    .uri("/decide-tool")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(request)
-                    .retrieve()
-                    .bodyToMono(ToolMessageResponse.class)
-                    .block();
-
-            if (response == null) {
-                throw new RuntimeException("Tool decision service returned null response");
-            }
-            return response;
-
-        } catch (WebClientResponseException e) {
-            throw new RuntimeException("FastAPI service error: " + e.getMessage(), e);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to call tool decision service: " + e.getMessage(), e);
-        }
-    }
 
     public AiResponse getExpenseSummary(AiReportRequest request) {
         try {
@@ -62,6 +40,7 @@ public class ToolDecisionClient {
             throw new RuntimeException("Failed to call report generate service: " + e.getMessage(), e);
         }
     }
+
     public ToolMessageResponse getToolExtraction(AiRequest request){
         try{
             com.bharat.SpendLens.responsedto.ToolMessageResponse response

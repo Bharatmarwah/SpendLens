@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -58,7 +59,6 @@ public class OrchestratorService {
 
     private AiResponse handleExpenseReport(Map<String, Object> args) {
         try {
-            // Extract parameters with null-safe handling
             Long expenseId = null;
             if (args.get("expense_id") != null) {
                 try {
@@ -90,11 +90,9 @@ public class OrchestratorService {
                 }
             }
 
-            // ✅ KEY: Convert IST dates to UTC date range for database query
             Instant startDate = null;
             if (args.get("start_date") != null) {
                 try {
-                    // Convert IST start of day to UTC
                     startDate = dateZone.convertToInstant(args.get("start_date").toString());
                     log.info("Start date (IST) {} converted to UTC: {}", args.get("start_date"), startDate);
                 } catch (Exception e) {
@@ -105,7 +103,6 @@ public class OrchestratorService {
             Instant endDate = null;
             if (args.get("end_date") != null) {
                 try {
-                    // Convert IST end of day to UTC
                     endDate = dateZone.convertToInstantEndOfDay(args.get("end_date").toString());
                     log.info("End date (IST) {} converted to UTC: {}", args.get("end_date"), endDate);
                 } catch (Exception e) {
@@ -116,7 +113,7 @@ public class OrchestratorService {
             log.info("Generating expense report: expenseId={}, category={}, minAmount={}, maxAmount={}, startDate={}, endDate={}",
                     expenseId, category, minAmount, maxAmount, startDate, endDate);
 
-            // Call service with null values (handled by query IS NULL checks)
+            // Fetch expenses from database
             List<ExpenseResponseDTO> allExpenseForUser = expenseService.getAllExpenseForUser(
                     expenseId, category, minAmount, maxAmount, startDate, endDate
             );
@@ -127,11 +124,122 @@ public class OrchestratorService {
             }
 
             log.info("Found {} expenses", allExpenseForUser.size());
-            return new AiResponse("Here is your expense report with " + allExpenseForUser.size() + " expenses matching the criteria.");
+
+            // Build detailed expense report
+            String expenseReport = buildExpenseReport(allExpenseForUser);
+            log.debug("Generated expense report: {}", expenseReport);
+
+            // Call FastAPI to generate AI-powered summary and insights
+            AiResponse aiAnalysis = callFastAPIForAnalysis(expenseReport);
+
+            log.info("Expense report analysis completed successfully");
+            return aiAnalysis;
 
         } catch (Exception e) {
             log.error("Error generating expense report: {}", e.getMessage(), e);
             throw new ExpenseProcessingException("Failed to generate expense report: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Build a structured expense report optimized for LLM analysis
+     * Format: Grouped by category with statistics for better context
+     */
+    private String buildExpenseReport(List<ExpenseResponseDTO> expenses) {
+        StringBuilder builder = new StringBuilder();
+
+        // Summary statistics section (LLM needs this first)
+        builder.append("📊 EXPENSE ANALYSIS REPORT\n");
+        builder.append("=".repeat(70)).append("\n\n");
+
+        // Calculate summary metrics
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal avgAmount = BigDecimal.ZERO;
+        int expenseCount = expenses.size();
+
+        for (ExpenseResponseDTO expense : expenses) {
+            totalAmount = totalAmount.add(expense.getAmount());
+        }
+
+        if (expenseCount > 0) {
+            avgAmount = totalAmount.divide(new BigDecimal(expenseCount), 2, java.math.RoundingMode.HALF_UP);
+        }
+
+        // Summary section - Context for LLM
+        builder.append("SUMMARY METRICS:\n");
+        builder.append("├─ Total Expenses: ").append(expenseCount).append("\n");
+        builder.append("├─ Total Amount: ₹").append(totalAmount).append("\n");
+        builder.append("├─ Average Per Expense: ₹").append(avgAmount).append("\n");
+        builder.append("└─ Time Period: ").append(expenses.get(0).getCreatedAt())
+                .append(" to ").append(expenses.get(expenseCount - 1).getCreatedAt()).append("\n\n");
+
+        // Group expenses by category
+        Map<String, List<ExpenseResponseDTO>> groupedByCategory = new java.util.LinkedHashMap<>();
+        for (ExpenseResponseDTO expense : expenses) {
+            groupedByCategory.computeIfAbsent(expense.getCategory(), k -> new java.util.ArrayList<>())
+                    .add(expense);
+        }
+
+        // Category breakdown section
+        builder.append("CATEGORY BREAKDOWN:\n");
+        builder.append("-".repeat(70)).append("\n");
+
+        for (Map.Entry<String, List<ExpenseResponseDTO>> entry : groupedByCategory.entrySet()) {
+            String category = entry.getKey();
+            List<ExpenseResponseDTO> categoryExpenses = entry.getValue();
+
+            BigDecimal categoryTotal = BigDecimal.ZERO;
+            for (ExpenseResponseDTO exp : categoryExpenses) {
+                categoryTotal = categoryTotal.add(exp.getAmount());
+            }
+
+            BigDecimal percentage = totalAmount.compareTo(BigDecimal.ZERO) > 0
+                    ? categoryTotal.divide(totalAmount, 2, java.math.RoundingMode.HALF_UP)
+                            .multiply(new BigDecimal(100))
+                    : BigDecimal.ZERO;
+
+            builder.append("\n📌 ").append(category).append(" (").append(categoryExpenses.size())
+                    .append(" transactions)\n");
+            builder.append("   Total: ₹").append(categoryTotal).append(" (").append(percentage).append("%)\n");
+
+            // List individual transactions in this category
+            for (ExpenseResponseDTO expense : categoryExpenses) {
+                builder.append("   • ₹").append(expense.getAmount())
+                        .append(" - ").append(expense.getDescription() != null ? expense.getDescription() : "N/A")
+                        .append(" (").append(expense.getCreatedAt()).append(")\n");
+            }
+        }
+
+        builder.append("\n").append("=".repeat(70)).append("\n");
+
+        return builder.toString();
+    }
+
+    /**
+     * Call FastAPI generate-report endpoint for AI-powered analysis
+     */
+    private AiResponse callFastAPIForAnalysis(String expenseReport) {
+        try {
+            log.info("Calling FastAPI to analyze expense report");
+
+            com.bharat.SpendLens.requestdto.AiReportRequest reportRequest =
+                    new com.bharat.SpendLens.requestdto.AiReportRequest(expenseReport);
+
+            AiResponse aiAnalysis = toolDecisionClient.getExpenseSummary(reportRequest);
+
+            if (aiAnalysis == null || aiAnalysis.getMessage() == null || aiAnalysis.getMessage().isEmpty()) {
+                log.warn("FastAPI returned empty analysis, using raw report");
+                return new AiResponse(expenseReport);
+            }
+
+            log.info("FastAPI analysis received successfully");
+            return aiAnalysis;
+
+        } catch (Exception e) {
+            log.error("Failed to call FastAPI for analysis: {}", e.getMessage(), e);
+            // Fallback: return raw report if FastAPI fails
+            log.warn("Returning raw expense report due to FastAPI error");
+            return new AiResponse(expenseReport);
         }
     }
 
@@ -292,7 +400,6 @@ public class OrchestratorService {
             log.error("Delete expense validation error", e);
             throw e;
         } catch (ResourceNotFoundException e) {
-            // Return a friendly message instead of throwing exception
             log.warn("Some expenses not found for deletion: {}", e.getMessage());
             return new AiResponse("Some expenses were not found. They may have already been deleted.");
         } catch (Exception e) {
