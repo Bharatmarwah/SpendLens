@@ -12,7 +12,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-public interface ExpenseRepo extends JpaRepository<Expense,Long>{
+public interface ExpenseRepo extends JpaRepository<Expense, Long> {
 
     @Query("SELECT e FROM Expense e WHERE e.id = :id AND e.userId = :userId")
     Optional<Expense> findByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
@@ -23,7 +23,8 @@ public interface ExpenseRepo extends JpaRepository<Expense,Long>{
             "AND (:minAmount IS NULL OR e.amount >= :minAmount) " +
             "AND (:maxAmount IS NULL OR e.amount <= :maxAmount) " +
             "AND (:startDate IS NULL OR e.createdAt >= :startDate) " +
-            "AND (:endDate IS NULL OR e.createdAt <= :endDate)")
+            "AND (:endDate IS NULL OR e.createdAt <= :endDate)" +
+            "ORDER BY e.createdAt DESC")
     Page<Expense> findByUserIdAndFilters(
             @Param("userId") Long userId,
             @Param("category") String category,

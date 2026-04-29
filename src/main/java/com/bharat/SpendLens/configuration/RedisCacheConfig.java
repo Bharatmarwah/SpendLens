@@ -18,27 +18,30 @@ import java.time.Duration;
 @Configuration
 public class RedisCacheConfig {
 
+    @Bean
+    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
 
-//    @Bean
-//    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory){
-//
-//        ObjectMapper mapper = new ObjectMapper();
-//        mapper.registerModule(new JavaTimeModule());
-//
-//        RedisCacheConfiguration
-//                configuration = RedisCacheConfiguration
-//                .defaultCacheConfig()
-//                .disableCachingNullValues()
-//                .entryTtl(Duration.ofMinutes(20))
-//                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-//                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer(mapper)));
-//
-//
-//        return RedisCacheManager
-//                .builder(connectionFactory)
-//                .cacheDefaults(configuration)
-//                .build();
-//    }
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
 
+        // 🔥 FIX: Use simple non-polymorphic serialization
+        // This avoids type ID issues with old cached data
+        // enableDefaultTyping allows types but without strict validation
+        mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+
+        RedisCacheConfiguration configuration = RedisCacheConfiguration
+                .defaultCacheConfig()
+                .disableCachingNullValues()
+                .entryTtl(Duration.ofMinutes(20))
+                .serializeKeysWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(new GenericJackson2JsonRedisSerializer(mapper)));
+
+        return RedisCacheManager
+                .builder(connectionFactory)
+                .cacheDefaults(configuration)
+                .build();
+    }
 
 }

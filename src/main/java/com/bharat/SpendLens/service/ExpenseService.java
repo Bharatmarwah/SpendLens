@@ -12,6 +12,8 @@ import com.bharat.SpendLens.responsedto.ExpenseResponseDTO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
@@ -30,7 +32,7 @@ public class ExpenseService {
 
     private final ExpenseRepo expenseRepo;
 
-//    @CacheEvict(value = {"expenses","expenses_list"},allEntries = true)
+    @CacheEvict(value = {"expenses","expenses_list"},allEntries = true)
     @Transactional
     public ExpenseResponseDTO addExpense(@Valid ExpenseRequestDTO requestDTO) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -59,7 +61,7 @@ public class ExpenseService {
                 .build();
     }
 
-//    @CacheEvict(cacheNames = {"expenses","expenses_list"},allEntries = true)
+    @CacheEvict(cacheNames = {"expenses","expenses_list"},allEntries = true)
     @Transactional
     public ExpenseResponseDTO updateExpense(Long id,
                                             @Valid ExpenseRequestDTO requestDTO) {
@@ -98,10 +100,10 @@ public class ExpenseService {
                 .build();
     }
 
-//    @Cacheable(
-//            value = "expenses",
-//            key = "#root.methodName + '_' + #page + '_' + #size + '_' + #category + '_' + #minAmount + '_' + #maxAmount + '_' + #startDate + '_' + #endDate + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name"
-//    )
+    @Cacheable(
+            value = "expenses",
+            key = "#root.methodName + '_' + #page + '_' + #size + '_' + #category + '_' + #minAmount + '_' + #maxAmount + '_' + #startDate + '_' + #endDate + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name"
+    )
     @Transactional(readOnly = true)
     public ExpensePageResponseDTO getExpenses(int page, int size, String category, BigDecimal minAmount, BigDecimal maxAmount, Instant startDate, Instant endDate) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -128,7 +130,7 @@ public class ExpenseService {
                 .build();
     }
 
-//    @CacheEvict(cacheNames = {"expenses","expenses_list"},allEntries = true)
+    @CacheEvict(cacheNames = {"expenses","expenses_list"},allEntries = true)
     @Transactional
     public void deleteExpense(Long id) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -142,10 +144,10 @@ public class ExpenseService {
         expenseRepo.delete(expense);
     }
 
-//    @Cacheable(
-//            value = "expenses_list",
-//            key = "#expenseId + '_' + #category + '_' + #minAmount + '_' + #maxAmount + '_' + #startDate + '_' + #endDate + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name"
-//    )
+    @Cacheable(
+            value = "expenses_list",
+            key = "#expenseId + '_' + #category + '_' + #minAmount + '_' + #maxAmount + '_' + #startDate + '_' + #endDate + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().authentication.name"
+    )
     @Transactional(readOnly = true)
     public List<ExpenseResponseDTO> getAllExpenseForUser(Long expenseId , String category, BigDecimal minAmount, BigDecimal maxAmount, Instant startDate, Instant endDate){
 
@@ -167,6 +169,7 @@ public class ExpenseService {
                 .toList();
     }
 
+    @CacheEvict(cacheNames = {"expenses","expenses_list"},allEntries = true)
     @Transactional
     public DeleteResponse deleteMultipleExpenses(DeleteExpensesRequestDTO requestDTO) {
 
